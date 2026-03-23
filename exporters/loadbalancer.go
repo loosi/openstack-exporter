@@ -82,6 +82,11 @@ var defaultLoadbalancerMetrics = []Metric{
 	{Name: "amphora_status", Labels: []string{"id", "loadbalancer_id", "compute_id", "status", "role", "lb_network_ip", "ha_ip", "cert_expiration"}},
 	{Name: "total_pools", Fn: ListAllPools},
 	{Name: "pool_status", Labels: []string{"id", "provisioning_status", "name", "loadbalancers", "protocol", "lb_algorithm", "operating_status", "project_id"}},
+	{Name: "loadbalancer_stats_active_connections", Labels: []string{"id"}},
+	{Name: "loadbalancer_stats_total_connections", Labels: []string{"id"}},
+	{Name: "loadbalancer_stats_bytes_in", Labels: []string{"id"}},
+	{Name: "loadbalancer_stats_bytes_out", Labels: []string{"id"}},
+	{Name: "loadbalancer_stats_request_errors", Labels: []string{"id"}},
 }
 
 func NewLoadbalancerExporter(config *ExporterConfig, logger *slog.Logger) (*LoadbalancerExporter, error) {
@@ -116,6 +121,21 @@ func ListAllLoadbalancers(exporter *BaseOpenStackExporter, ch chan<- prometheus.
 		ch <- prometheus.MustNewConstMetric(exporter.Metrics["loadbalancer_status"].Metric,
 			prometheus.GaugeValue, float64(mapLoadbalancerStatus(loadbalancer.OperatingStatus)), loadbalancer.ID, loadbalancer.Name, loadbalancer.ProjectID,
 			loadbalancer.OperatingStatus, loadbalancer.ProvisioningStatus, loadbalancer.Provider, loadbalancer.VipAddress)
+		loadbalancerStatsResults := loadbalancers.GetStats(exporter.Client, loadbalancer.ID)
+		loadbalancerStats, err := loadbalancerStatsResults.Extract()
+		if err != nil {
+			return err
+		}
+		ch <- prometheus.MustNewConstMetric(exporter.Metrics["loadbalancer_stats_active_connections"].Metric,
+			prometheus.GaugeValue, float64(loadbalancerStats.ActiveConnections), loadbalancer.ID)
+		ch <- prometheus.MustNewConstMetric(exporter.Metrics["loadbalancer_stats_total_connections"].Metric,
+			prometheus.CounterValue, float64(loadbalancerStats.TotalConnections), loadbalancer.ID)
+		ch <- prometheus.MustNewConstMetric(exporter.Metrics["loadbalancer_stats_bytes_in"].Metric,
+			prometheus.CounterValue, float64(loadbalancerStats.BytesIn), loadbalancer.ID)
+		ch <- prometheus.MustNewConstMetric(exporter.Metrics["loadbalancer_stats_bytes_out"].Metric,
+			prometheus.CounterValue, float64(loadbalancerStats.BytesOut), loadbalancer.ID)
+		ch <- prometheus.MustNewConstMetric(exporter.Metrics["loadbalancer_stats_request_errors"].Metric,
+			prometheus.CounterValue, float64(loadbalancerStats.RequestErrors), loadbalancer.ID)
 	}
 	return nil
 }
