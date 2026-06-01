@@ -109,7 +109,7 @@ func ListAllLoadbalancers(ctx context.Context, exporter *BaseOpenStackExporter, 
 		ch <- prometheus.MustNewConstMetric(exporter.Metrics["loadbalancer_status"].Metric,
 			prometheus.GaugeValue, float64(mapLoadbalancerStatus(loadbalancer.OperatingStatus)), loadbalancer.ID, loadbalancer.Name, loadbalancer.ProjectID,
 			loadbalancer.OperatingStatus, loadbalancer.ProvisioningStatus, loadbalancer.Provider, loadbalancer.VipAddress)
-		loadbalancerStatsResults := loadbalancers.GetStats(exporter.Client, loadbalancer.ID)
+		loadbalancerStatsResults := loadbalancers.GetStats(ctx, exporter.ClientV2, loadbalancer.ID)
 		loadbalancerStats, err := loadbalancerStatsResults.Extract()
 		if err != nil {
 			return err
